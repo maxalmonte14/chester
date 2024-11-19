@@ -1,0 +1,15 @@
+<h2>The following links were fetched</h2>
+
+<ul>
+    {% for link in links %}
+        <li class=""><a href="{{ link.url }}">{{ link.text }}</a></li>
+    {% endfor %}
+</ul>
+
+<form>
+    <input name="data" hidden="hidden" value="{{ extra }}">
+    <button type="button" hx-post="/word-list"
+            hx-trigger="click"
+            hx-target="#results"
+            hx-swap="innerHTML">Fetch all {{ count }} words from Jisho</button>
+</form>

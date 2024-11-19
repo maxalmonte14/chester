@@ -1,0 +1,78 @@
+ul {
+  list-style: none;
+  white-space-collapse: discard;
+}
+
+li:not(:last-child) {
+  margin-bottom: 10px;
+}
+
+.tag {
+  background-color: grey;
+  padding: 5px;
+  color: white;
+  font-weight: bold;
+  border-radius: 5px;
+  font-size: 10px;
+  font-family: sans-serif;
+}
+
+.ichidan-verb-tag {
+  background-color: red;
+}
+
+.transitive-verb-tag {
+  background-color: blue;
+}
+
+.noun-tag {
+  background-color: green;
+}
+
+.i-adjective-keiyoushi-tag {
+  background-color: deeppink;
+}
+
+.adverb-fukushi-tag {
+  background-color: yellow;
+  color: black;
+}
+
+.suru-verb-tag {
+  background-color: black;
+}
+
+.intransitive-verb-tag {
+  background-color: teal;
+}
+
+.noun-which-may-take-the-genitive-case-particle-no-tag {
+  background-color: aqua;
+  color: black;
+}
+
+.na-adjective-keiyodoshi-tag {
+  background-color: aquamarine;
+  color: black;
+}
+
+li span[class^='godan-verb-with'] {
+  background-color: blueviolet;
+}
+
+.counter-tag {
+  background-color: brown;
+}
+
+.used-as-a-suffix-tag {
+  background-color: coral;
+}
+
+.numeric-tag {
+  background-color: chartreuse;
+  color: black;
+}
+
+.pronoun-tag {
+  background-color: deepskyblue;
+}

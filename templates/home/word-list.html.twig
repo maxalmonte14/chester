@@ -1,0 +1,22 @@
+<ul>
+    {% for word in words %}
+        <li>
+            {{ word.word }},
+            {% for otherForm in word.otherForms %}
+                {{ otherForm.form }}
+            {% endfor %}
+            ,{{ word.furigana }},
+
+            "<ul>
+                {% for definition in word.definitions %}
+                    <li>
+                        {% for category in definition.categories %}
+                            <span class="{{ category.name|lower|replace({' ': '-', '(': '', ')': '', '\'': ''}) }}-tag tag">{{ category.name }}</span>&nbsp;
+                        {% endfor %}
+                        {{ definition.definition }}
+                    </li>
+                {% endfor %}
+            </ul>"
+        </li>
+    {% endfor %}
+</ul>

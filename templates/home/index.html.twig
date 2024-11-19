@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>@TODO: ADD EXAMPLE SENTENCES AND THEIR TRANSLATION IF AVAILABLE</h1>
+    <h1>Fetch words from:</h1>
+    <form>
+        <label for="pageLink">Link</label>
+        <input type="text" name="pageLink">
+        <button type="button" hx-post="/extract"
+                hx-trigger="click"
+                hx-target="#results"
+                hx-swap="innerHTML">Search</button>
+    </form>
+    <div id="results"></div>
+{% endblock %}
