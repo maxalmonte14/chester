@@ -70,7 +70,7 @@ final class JishoCrawlerService
             $response = $this->client->request('GET', sprintf('https:%s', $link->url));
             $this->crawler->addHtmlContent($response->getContent());
 
-            $furigana = $this->getFurigana();
+            $kana = $this->getKana();
 
             foreach ($this->crawler->filter('.meanings-wrapper div') as $node) {
                 if (
@@ -101,7 +101,7 @@ final class JishoCrawlerService
 
             $words[] = new WordDto(
                 trim($link->text),
-                $furigana,
+                $kana,
                 $this->definitions,
                 $this->otherForms,
             );
@@ -114,14 +114,32 @@ final class JishoCrawlerService
 
     private function resetProperties(): void
     {
+        $this->crawler->clear();
+
         $this->definitions = [];
         $this->otherForms = [];
-        $this->crawler = new Crawler();
     }
 
-    private function getFurigana(): string
+    private function getKana(): string
     {
-        return trim($this->crawler->filter('.furigana')->first()->text());
+        $furigana = $this->crawler->filter('.furigana');
+        $results = $furigana
+                        ->siblings()
+                        ->first()
+                        ->children()
+                        ->filter('span')
+                        ->each(fn(Crawler $crawler) => $crawler->text());
+
+        $furigana
+            ->children()
+            ->filter('span')
+            ->each(function (Crawler $crawler, $key) use (&$results) {
+                if (trim($crawler->text()) != '') {
+                    array_splice($results, $key, 0, $crawler->text());
+                }
+            });
+
+        return join($results);
     }
 
     /**

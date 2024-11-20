@@ -12,8 +12,8 @@ final class WordDto
 {
     public function __construct(
         public string $word,
-        public string $furigana,
-        public array $definitions,
-        public array $otherForms,
+        public string $kana,
+        public array  $definitions,
+        public array  $otherForms,
     ) {}
 }

@@ -20,7 +20,6 @@ final class WordListController extends AbstractController
     #[Route('/word-list', methods: ['POST'])]
     public function getWords(#[MapRequestPayload] WordListPayloadDto $payload): Response {
         $words = $this->crawlerService->getWords(WordListPayloadDto::toLinkCollection($payload->data));
-
         return $this->render('home/word-list.html.twig', [
             'words' => $words,
         ]);
