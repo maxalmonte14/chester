@@ -203,6 +203,7 @@ final class JishoCrawlerService
         ) {
             $senses = $senseTags
                 ->filter('span:not(.tag-see_also)')
+                ->filter('span:not(.tag-antonym)')
                 ->each(
                     fn(Crawler $crawler) => new SenseDTO(trim($crawler->text()))
                 );
