@@ -76,3 +76,9 @@ li span[class^='godan-verb-with'] {
 .pronoun-tag {
   background-color: deepskyblue;
 }
+
+.definition-sense {
+  color: gray;
+  font-size: 12px;
+  font-weight: lighter;
+}

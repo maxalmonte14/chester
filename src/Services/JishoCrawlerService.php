@@ -6,6 +6,7 @@ use App\DTO\CategoryDTO;
 use App\DTO\DefinitionDto;
 use App\DTO\LinkDto;
 use App\DTO\OtherFormDto;
+use App\DTO\SenseDTO;
 use App\DTO\WordDto;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -174,17 +175,40 @@ final class JishoCrawlerService
     private function getDefinition(\DOMNodeList $nodeList, array $categories): array
     {
         $definitions = [];
+        $definitionElement = (new Crawler($nodeList))->filter('.meaning-meaning')->first();
 
-        foreach ($nodeList as $meaningDefinitionContent) {
-            if ($meaningDefinitionContent->getAttribute('class') == 'meaning-meaning') {
-                $definitions[] = new DefinitionDto(
-                    trim($meaningDefinitionContent->textContent),
-                    $categories
-                );
-            }
+        if ($definitionElement->count() > 0) {
+            $definitions[] = new DefinitionDto(
+                trim($definitionElement->text()),
+                $this->getSenses($definitionElement->siblings()->last()),
+                $categories
+            );
         }
 
         return $definitions;
+    }
+
+    /**
+     * @return array<SenseDTO>
+     */
+    private function getSenses(Crawler $element): array
+    {
+        $children = $element->children();
+        $senseTags = $children?->filter('.sense-tag');
+
+        if (
+            $children->count() > 0 &&
+            $senseTags->count() > 0 &&
+            !in_array($senseTags->first()->attr('class'), ['sense-tag tag-antonym', 'sense-tag tag-see_also'])
+        ) {
+            $senses = $senseTags
+                ->filter('span:not(.tag-see_also)')
+                ->each(
+                    fn(Crawler $crawler) => new SenseDTO(trim($crawler->text()))
+                );
+        }
+
+        return $senses ?? [];
     }
 
     /**

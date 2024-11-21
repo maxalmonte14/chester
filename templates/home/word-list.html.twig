@@ -1,23 +1,28 @@
 <ul>
-    {% for word in words %}
+    {%- for word in words -%}
         <li>
-            {{ word.word }},
-            {% for otherForm in word.otherForms %}
-                {{ otherForm.form }}
-            {% endfor %}
-            ,{{ word.kana }},
+            {{- word.word -}},
+            {%- for otherForm in word.otherForms -%}
+                {{- otherForm.form -}}
+            {%- endfor -%}
+            ,{{- word.kana -}},
 
             "<ul>
-                {% for definition in word.definitions %}
+                {%- for definition in word.definitions -%}
                     <li>
-                        {% for category in definition.categories %}
-                            <span class="{{ category.name|lower|replace({' ': '-', '(': '', ')': '', '\'': ''}) }}-tag tag">{{ category.name }}</span>&nbsp;
-                        {% endfor %}
-                        {{ definition.definition }}
+                        {%- for category in definition.categories -%}
+                            <span class="{{- category.name|lower|replace({' ': '-', '(': '', ')': '', '\'': ''}) -}}-tag tag">
+                                {{- category.name -}}
+                            </span>&nbsp;
+                        {%- endfor -%}
+                        {{- definition.definition -}}
+                        {%- if definition.senses|length > 0 -%}
+                            &nbsp;<span class="definition-sense">{{- definition.senses|join(', ') -}}</span>
+                        {%- endif -%}
                     </li>
-                {% endfor %}
+                {%- endfor -%}
             </ul>",
-            "{{ word.exampleSentence }}",,"{{ word.exampleSentenceTranslation }}"
+            "{{- word.exampleSentence -}}",,"{{- word.exampleSentenceTranslation -}}"
         </li>
-    {% endfor %}
+    {%- endfor -%}
 </ul>

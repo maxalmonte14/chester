@@ -6,9 +6,13 @@ namespace App\DTO;
 
 /**
  * @property  $categories array<CategoryDTO>
+ * @property  $senses array<SenseDTO>
  */
 final class DefinitionDto
 {
-    public function __construct(public string $definition, public array $categories) {
-    }
+    public function __construct(
+        public string $definition,
+        public array  $senses,
+        public array  $categories
+    ) {}
 }
