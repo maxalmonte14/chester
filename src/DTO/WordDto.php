@@ -15,5 +15,7 @@ final class WordDto
         public string $kana,
         public array  $definitions,
         public array  $otherForms,
+        public string $exampleSentence,
+        public string $exampleSentenceTranslation,
     ) {}
 }

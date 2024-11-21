@@ -21,8 +21,12 @@ final class JishoCrawlerService
 
     public function __construct(
         private readonly HttpClientInterface $client,
-        private array $definitions = [],
-        private array $otherForms = [],
+        private array  $definitions = [],
+        private string $exampleSentence = '',
+        private string $exampleSentenceTranslation = '',
+        private string $kana = '',
+        private array  $otherForms = [],
+        private array  $words = [],
     ) {
         $this->crawler = new Crawler();
     }
@@ -64,24 +68,22 @@ final class JishoCrawlerService
      */
     public function getWords(array $links): array
     {
-        $words = [];
-
         foreach ($links as $link) {
             $response = $this->client->request('GET', sprintf('https:%s', $link->url));
+
             $this->crawler->addHtmlContent($response->getContent());
 
-            $kana = $this->getKana();
+            $this->kana = $this->getKana();
 
-            foreach ($this->crawler->filter('.meanings-wrapper div') as $node) {
+            $this->crawler->filter('.meanings-wrapper div')->each(function (Crawler $crawler) {
                 if (
-                    $node->getAttribute('class') == 'meaning-tags' &&
-                    $node->textContent != 'Other forms'
+                    $crawler->attr('class') == 'meaning-tags' && $crawler->text() != 'Other forms'
                 ) {
-                    $meaningDefinition = $node->nextElementSibling->firstChild;
-                    $formattedCategories = $this->getCategories(trim($node->textContent));
+                    $meaningDefinition = $crawler->getNode(0)->nextElementSibling->firstChild;
+                    $formattedCategories = $this->getCategories(trim($crawler->text()));
 
                     if (in_array($formattedCategories[0]->name, $this->excludeCategories)) {
-                        continue;
+                        return;
                     }
 
                     $this->definitions = array_merge(
@@ -89,34 +91,48 @@ final class JishoCrawlerService
                         $this->getDefinition($meaningDefinition->childNodes, $formattedCategories)
                     );
                 } else if (
-                    $node->getAttribute('class') == 'meaning-tags' &&
-                    $node->textContent == 'Other forms'
+                    $crawler->attr('class') == 'meaning-tags' && $crawler->text() == 'Other forms'
                 ) {
                     {
-                        $meaningDefinition = $node->nextElementSibling->firstChild;
+                        $meaningDefinition = $crawler->getNode(0)->nextElementSibling->firstChild;
                         $this->otherForms = $this->getOtherForms($meaningDefinition->childNodes);
                     }
-                }
-            }
+                } else if ($crawler->attr('class') == 'meaning-wrapper' && $this->exampleSentence == '') {
+                    $crawler->filter('.sentence')->each(function (Crawler $crawler) {
+                        $this->exampleSentenceTranslation = $crawler->children()->last()->text();
 
-            $words[] = new WordDto(
+                        $crawler
+                            ->filter('.sentence ul li .unlinked')
+                            ->each(fn (Crawler $crawler) => $this->exampleSentence .= $crawler->text());
+
+                        $this->exampleSentence .= ($this->exampleSentence == '') ? '' : '。';
+                    });
+                }
+            });
+
+            $this->words[] = new WordDto(
                 trim($link->text),
-                $kana,
+                trim($this->kana),
                 $this->definitions,
                 $this->otherForms,
+                trim($this->exampleSentence),
+                trim($this->exampleSentenceTranslation),
             );
 
             $this->resetProperties();
         }
 
-        return $words;
+        return $this->words;
     }
 
     private function resetProperties(): void
     {
         $this->crawler->clear();
 
+        $this->kana = '';
         $this->definitions = [];
+        $this->exampleSentence = '';
+        $this->exampleSentenceTranslation = '';
         $this->otherForms = [];
     }
 
