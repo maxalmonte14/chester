@@ -20,6 +20,12 @@ final class JishoCrawlerService
         'Wikipedia definition',
     ];
 
+    private array $knownCategoriesIncludingComma = [
+        'Expressions (phrases, clauses, etc.)',
+        'Noun, used as a prefix',
+        'Noun, used as a suffix',
+    ];
+
     public function __construct(
         private readonly HttpClientInterface $client,
         private array  $definitions = [],
@@ -164,9 +170,21 @@ final class JishoCrawlerService
      */
     private function getCategories(string $categories): array
     {
-        return array_map(function ($category) {
-            return new CategoryDTO(ucfirst(trim($category)));
-        }, array_unique(explode(',', $categories)));
+        $extraCategories = [];
+
+        foreach ($this->knownCategoriesIncludingComma as $knownCategory) {
+            if (str_contains($categories, $knownCategory)) {
+                $categories = str_replace($knownCategory, '', $categories);
+                $extraCategories[] = trim(str_replace(',', '', $knownCategory));
+            }
+        }
+
+        $filteredArray = array_filter(explode(',', $categories), fn($c) => trim($c) != '');
+
+        return array_map(
+            fn ($category) => new CategoryDTO(ucfirst(trim($category))),
+            array_merge(array_unique($filteredArray), $extraCategories)
+        );
     }
 
     /**
