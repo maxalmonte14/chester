@@ -10,6 +10,7 @@ use App\DTO\LinkDto;
 use App\DTO\OtherFormDto;
 use App\DTO\SenseDTO;
 use App\DTO\WordDto;
+use App\Exceptions\UnableToFetchLinksException;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -44,18 +45,18 @@ final class JishoCrawlerService
     {
         try {
             $response = $this->client->request('GET', $link);
-        } catch (\Exception $exception) {
-            return [];
+
+            $crawler = $this->crawlerFactory::fromString($response->getContent());
+
+            return $crawler->filter('.concept_light.clearfix')->each(function (Crawler $node) {
+                $word = $node->filter('span.text')->first()->text();
+                $link = $node->filter('a.light-details_link')->first()->attr('href');
+
+                return new LinkDto($link, $word);
+            });
+        } catch (\Exception) {
+            throw new UnableToFetchLinksException();
         }
-
-        $crawler = $this->crawlerFactory::fromString($response->getContent());
-
-        return $crawler->filter('.concept_light.clearfix')->each(function (Crawler $node) {
-            $word = $node->filter('span.text')->first()->text();
-            $link = $node->filter('a.light-details_link')->first()->attr('href');
-
-            return new LinkDto($link, $word);
-        });
     }
 
     /**
