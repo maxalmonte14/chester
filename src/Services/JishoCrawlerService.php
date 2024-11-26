@@ -49,24 +49,13 @@ final class JishoCrawlerService
         }
 
         $crawler = $this->crawlerFactory::fromString($response->getContent());
-        $links = [];
 
-        foreach ($crawler->filter('.concept_light.clearfix') as $domElement) {
-            $word = $domElement
-                ->childNodes
-                ->item(1)
-                ->firstElementChild
-                ->firstElementChild
-                ->lastElementChild
-                ->textContent;
-            $link = $domElement
-                ->childNodes
-                ->item(5)
-                ->getAttribute('href');
-            $links[] = new LinkDto($link, $word);
-        }
+        return $crawler->filter('.concept_light.clearfix')->each(function (Crawler $node) {
+            $word = $node->filter('span.text')->first()->text();
+            $link = $node->filter('a.light-details_link')->first()->attr('href');
 
-        return $links;
+            return new LinkDto($link, $word);
+        });
     }
 
     /**
