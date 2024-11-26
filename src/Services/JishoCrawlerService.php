@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\DTO\CategoryDTO;
@@ -13,8 +15,6 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class JishoCrawlerService
 {
-    private Crawler $crawler;
-
     private array $excludeCategories = [
         'Place',
         'Wikipedia definition',
@@ -28,15 +28,14 @@ final class JishoCrawlerService
 
     public function __construct(
         private readonly HttpClientInterface $client,
+        private readonly CrawlerFactory $crawlerFactory,
         private array  $definitions = [],
         private string $exampleSentence = '',
         private string $exampleSentenceTranslation = '',
         private string $kana = '',
         private array  $otherForms = [],
         private array  $words = [],
-    ) {
-        $this->crawler = new Crawler();
-    }
+    ) {}
 
     /**
      * @return array<LinkDto>
@@ -49,10 +48,10 @@ final class JishoCrawlerService
             return [];
         }
 
-        $this->crawler->addHtmlContent($response->getContent());
+        $crawler = $this->crawlerFactory::fromString($response->getContent());
         $links = [];
 
-        foreach ($this->crawler->filter('.concept_light.clearfix') as $domElement) {
+        foreach ($crawler->filter('.concept_light.clearfix') as $domElement) {
             $word = $domElement
                 ->childNodes
                 ->item(1)
@@ -76,13 +75,11 @@ final class JishoCrawlerService
     public function getWords(array $links): array
     {
         foreach ($links as $link) {
-            $response = $this->client->request('GET', sprintf('https:%s', $link->url));
+            $response   = $this->client->request('GET', sprintf('https:%s', $link->url));
+            $crawler    = $this->crawlerFactory::fromString($response->getContent());
+            $this->kana = $this->getKana($crawler->getNode(0));
 
-            $this->crawler->addHtmlContent($response->getContent());
-
-            $this->kana = $this->getKana();
-
-            $this->crawler->filter('.meanings-wrapper div')->each(function (Crawler $crawler) {
+            $crawler->filter('.meanings-wrapper div')->each(function (Crawler $crawler) {
                 if (
                     $crawler->attr('class') == 'meaning-tags' && $crawler->text() != 'Other forms'
                 ) {
@@ -93,10 +90,13 @@ final class JishoCrawlerService
                         return;
                     }
 
-                    $this->definitions = array_merge(
-                        $this->definitions,
-                        $this->getDefinition($meaningDefinition->childNodes, $formattedCategories)
-                    );
+                    $currentDefinition = $this->getDefinition($meaningDefinition->childNodes, $formattedCategories);
+
+                    if (is_null($currentDefinition)) {
+                        return;
+                    }
+
+                    $this->definitions[] = $currentDefinition;
                 } else if (
                     $crawler->attr('class') == 'meaning-tags' && $crawler->text() == 'Other forms'
                 ) {
@@ -134,8 +134,6 @@ final class JishoCrawlerService
 
     private function resetProperties(): void
     {
-        $this->crawler->clear();
-
         $this->kana = '';
         $this->definitions = [];
         $this->exampleSentence = '';
@@ -143,9 +141,9 @@ final class JishoCrawlerService
         $this->otherForms = [];
     }
 
-    private function getKana(): string
+    private function getKana(\DOMNode $node): string
     {
-        $furigana = $this->crawler->filter('.furigana');
+        $furigana = $this->crawlerFactory::fromNode($node)->filter('.furigana');
         $results = $furigana
                         ->siblings()
                         ->first()
@@ -157,9 +155,11 @@ final class JishoCrawlerService
             ->children()
             ->filter('span')
             ->each(function (Crawler $crawler, $key) use (&$results) {
-                if (trim($crawler->text()) != '') {
-                    array_splice($results, $key, 0, $crawler->text());
+                if (trim($crawler->text()) == '') {
+                    return;
                 }
+
+                array_splice($results, $key, 0, $crawler->text());
             });
 
         return join($results);
@@ -190,20 +190,19 @@ final class JishoCrawlerService
     /**
      * @return array<DefinitionDto>
      */
-    private function getDefinition(\DOMNodeList $nodeList, array $categories): array
+    private function getDefinition(\DOMNodeList $nodeList, array $categories): ?DefinitionDto
     {
-        $definitions = [];
-        $definitionElement = (new Crawler($nodeList))->filter('.meaning-meaning')->first();
+        $definitionElement = $this->crawlerFactory::fromNodeList($nodeList)->filter('.meaning-meaning')->first();
 
-        if ($definitionElement->count() > 0) {
-            $definitions[] = new DefinitionDto(
-                trim($definitionElement->text()),
-                $this->getSenses($definitionElement->siblings()->last()),
-                $categories
-            );
+        if ($definitionElement->count() === 0) {
+            return null;
         }
 
-        return $definitions;
+        return new DefinitionDto(
+            trim($definitionElement->text()),
+            $this->getSenses($definitionElement->siblings()->last()),
+            $categories
+        );
     }
 
     /**
@@ -217,7 +216,10 @@ final class JishoCrawlerService
         if (
             $children->count() > 0 &&
             $senseTags->count() > 0 &&
-            !in_array($senseTags->first()->attr('class'), ['sense-tag tag-antonym', 'sense-tag tag-see_also'])
+            !in_array(
+                $senseTags->first()->attr('class'),
+                ['sense-tag tag-antonym', 'sense-tag tag-see_also']
+            )
         ) {
             $senses = $senseTags
                 ->filter('span:not(.tag-see_also)')
@@ -235,16 +237,10 @@ final class JishoCrawlerService
      */
     private function getOtherForms(\DOMNodeList $nodeList): array
     {
-        $otherForms = [];
-
-        foreach ($nodeList as $meaningDefinitionContent) {
-            if ($meaningDefinitionContent->getAttribute('class') == 'meaning-meaning') {
-                $otherForms[] = new OtherFormDto(
-                    trim($meaningDefinitionContent->textContent),
+        return $this->crawlerFactory::fromNodeList($nodeList)
+                ->filter('.meaning-meaning')
+                ->each(
+                    fn(Crawler $crawler) => new OtherFormDto(trim($crawler->text()))
                 );
-            }
-        }
-
-        return $otherForms;
     }
 }
