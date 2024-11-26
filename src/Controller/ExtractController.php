@@ -18,7 +18,7 @@ final class ExtractController extends AbstractController
     ) {}
 
     #[Route('/extract', methods: ['POST'])]
-    public function index(#[MapRequestPayload] ExtractLinkPayloadDto $payload): Response {
+    public function __invoke(#[MapRequestPayload] ExtractLinkPayloadDto $payload): Response {
         $links = $this->crawlerService->getLinksFromPage($payload->pageLink);
 
         return $this->render('home/extract.html.twig', [
