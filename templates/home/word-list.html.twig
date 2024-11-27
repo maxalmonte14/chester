@@ -11,7 +11,7 @@
                 {%- for definition in word.definitions -%}
                     <li>
                         {%- for category in definition.categories|sort((a,b) => a.name <=> b.name) -%}
-                            <span class="{{- category.name|lower|replace({' ': '-', '(': '', ')': '', '\'': '', '.': ''}) -}}-tag tag">
+                            <span class="{{- category.name|lower|replace({' ': '-', '(': '', ')': '', '\'': '', '.': '', '/': ''}) -}}-tag tag">
                                 {{- category.name -}}
                             </span>&nbsp;
                         {%- endfor -%}

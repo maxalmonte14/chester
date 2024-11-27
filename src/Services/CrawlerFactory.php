@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use DOMNode;
 use Symfony\Component\DomCrawler\Crawler;
 
 final class CrawlerFactory
@@ -13,13 +14,8 @@ final class CrawlerFactory
         return new Crawler($content);
     }
 
-    public static function fromNode(\DOMNode $node): Crawler
+    public static function fromNode(DOMNode $node): Crawler
     {
         return new Crawler($node);
-    }
-
-    public static function fromNodeList(\DOMNodeList $nodeList): Crawler
-    {
-        return new Crawler($nodeList);
     }
 }

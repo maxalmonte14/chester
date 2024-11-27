@@ -6,7 +6,7 @@ namespace App\DTO;
 
 /**
  * @property  $categories array<CategoryDTO>
- * @property  $senses array<SenseDTO>
+ * @property  $senses     array<SenseDTO>
  */
 final class DefinitionDto
 {

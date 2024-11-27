@@ -64,7 +64,7 @@ li span[class^='godan-verb-with'] {
   background-color: brown;
 }
 
-.used-as-a-suffix-tag {
+.noun-used-as-a-suffix-tag {
   background-color: coral;
 }
 
@@ -75,6 +75,38 @@ li span[class^='godan-verb-with'] {
 
 .pronoun-tag {
   background-color: deepskyblue;
+}
+
+.auxiliary-adjective-tag {
+  background-color: firebrick;
+}
+
+.godan-verb---ikuyuku-special-class-tag {
+  background-color: dodgerblue;
+}
+
+.auxiliary-verb-tag {
+  background-color: forestgreen;
+}
+
+.pre-noun-adjectival-rentaishi-tag {
+  background-color: fuchsia;
+}
+
+.suffix-tag {
+  background-color: gold;
+}
+
+.conjunction-tag {
+  background-color: goldenrod;
+}
+
+.prefix-tag {
+  background-color: hotpink;
+}
+
+.expressions-phrases-clauses-etc-tag {
+  background-color: indianred;
 }
 
 .definition-sense {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\DTO\WordListPayloadDto;
+use App\Exceptions\UnableToRetrieveWordListException;
 use App\Services\JishoCrawlerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,10 +20,16 @@ final class WordListController extends AbstractController
 
     #[Route('/word-list', methods: ['POST'])]
     public function __invoke(#[MapRequestPayload] WordListPayloadDto $payload): Response {
-        $words = $this->crawlerService->getWords(WordListPayloadDto::toLinkCollection($payload->data));
+        try {
+            $words = $this->crawlerService->getWords(WordListPayloadDto::toLinkCollection($payload->data));
 
-        return $this->render('home/word-list.html.twig', [
-            'words' => $words,
-        ]);
+            return $this->render('home/word-list.html.twig', [
+                'words' => $words,
+            ]);
+        } catch (UnableToRetrieveWordListException $exception) {
+            return $this->render('errors/500.html.twig', [
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }

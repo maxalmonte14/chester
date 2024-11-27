@@ -11,6 +11,9 @@ use App\DTO\OtherFormDto;
 use App\DTO\SenseDTO;
 use App\DTO\WordDto;
 use App\Exceptions\UnableToFetchLinksException;
+use App\Exceptions\UnableToRetrieveWordListException;
+use DOMNode;
+use Exception;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -30,22 +33,18 @@ final class JishoCrawlerService
     public function __construct(
         private readonly HttpClientInterface $client,
         private readonly CrawlerFactory $crawlerFactory,
-        private array  $definitions = [],
         private string $exampleSentence = '',
         private string $exampleSentenceTranslation = '',
-        private string $kana = '',
-        private array  $otherForms = [],
-        private array  $words = [],
     ) {}
 
     /**
      * @return array<LinkDto>
+     * @throws UnableToFetchLinksException
      */
     public function getLinksFromPage(string $link): array
     {
         try {
             $response = $this->client->request('GET', $link);
-
             $crawler = $this->crawlerFactory::fromString($response->getContent());
 
             return $crawler->filter('.concept_light.clearfix')->each(function (Crawler $node) {
@@ -54,84 +53,48 @@ final class JishoCrawlerService
 
                 return new LinkDto($link, $word);
             });
-        } catch (\Exception) {
+        } catch (Exception) {
             throw new UnableToFetchLinksException();
         }
     }
 
     /**
      * @param array<LinkDto> $links
+     * @throws UnableToRetrieveWordListException
      */
     public function getWords(array $links): array
     {
-        foreach ($links as $link) {
-            $response   = $this->client->request('GET', sprintf('https:%s', $link->url));
-            $crawler    = $this->crawlerFactory::fromString($response->getContent());
-            $this->kana = $this->getKana($crawler->getNode(0));
+        try {
+            $words  = [];
 
-            $crawler->filter('.meanings-wrapper div')->each(function (Crawler $crawler) {
-                if (
-                    $crawler->attr('class') == 'meaning-tags' && $crawler->text() != 'Other forms'
-                ) {
-                    $meaningDefinition = $crawler->getNode(0)->nextElementSibling->firstChild;
-                    $formattedCategories = $this->getCategories(trim($crawler->text()));
+            foreach ($links as $link) {
+                $senses   = [];
+                $response = $this->client->request('GET', sprintf('https:%s', $link->url));
+                $crawler  = $this->crawlerFactory::fromString($response->getContent());
+                $kana     = $this->getKana($crawler->getNode(0));
+                $meanings = $crawler
+                    ->filter('.meanings-wrapper div.meaning-wrapper span.meaning-meaning')
+                    ->each(function (Crawler $crawler) use (&$senses) {
+                        $senses[] = $this->getSenses($crawler->siblings()->last()->getNode(0));
 
-                    if (in_array($formattedCategories[0]->name, $this->excludeCategories)) {
-                        return;
-                    }
-
-                    $currentDefinition = $this->getDefinition($meaningDefinition->childNodes, $formattedCategories);
-
-                    if (is_null($currentDefinition)) {
-                        return;
-                    }
-
-                    $this->definitions[] = $currentDefinition;
-                } else if (
-                    $crawler->attr('class') == 'meaning-tags' && $crawler->text() == 'Other forms'
-                ) {
-                    {
-                        $meaningDefinition = $crawler->getNode(0)->nextElementSibling->firstChild;
-                        $this->otherForms = $this->getOtherForms($meaningDefinition->childNodes);
-                    }
-                } else if ($crawler->attr('class') == 'meaning-wrapper' && $this->exampleSentence == '') {
-                    $crawler->filter('.sentence')->each(function (Crawler $crawler) {
-                        $this->exampleSentenceTranslation = $crawler->children()->last()->text();
-
-                        $crawler
-                            ->filter('.sentence ul li .unlinked')
-                            ->each(fn (Crawler $crawler) => $this->exampleSentence .= $crawler->text());
-
-                        $this->exampleSentence .= ($this->exampleSentence == '') ? '' : '。';
+                        return trim($crawler->text());
                     });
-                }
-            });
+                $tags = $crawler
+                    ->filter('.meanings-wrapper div.meaning-tags')
+                    ->each(fn (Crawler $crawler) => $crawler->text());
 
-            $this->words[] = new WordDto(
-                trim($link->text),
-                trim($this->kana),
-                $this->definitions,
-                $this->otherForms,
-                trim($this->exampleSentence),
-                trim($this->exampleSentenceTranslation),
-            );
+                $this->setExampleSentence($crawler->filter('.sentence')->getNode(0));
 
-            $this->resetProperties();
+                $words[] = $this->makeWord($meanings, $tags, $senses, trim($link->text), $kana);
+            }
+
+            return $words;
+        } catch (Exception) {
+            throw new UnableToRetrieveWordListException();
         }
-
-        return $this->words;
     }
 
-    private function resetProperties(): void
-    {
-        $this->kana = '';
-        $this->definitions = [];
-        $this->exampleSentence = '';
-        $this->exampleSentenceTranslation = '';
-        $this->otherForms = [];
-    }
-
-    private function getKana(\DOMNode $node): string
+    private function getKana(DOMNode $node): string
     {
         $furigana = $this->crawlerFactory::fromNode($node)->filter('.furigana');
         $results = $furigana
@@ -152,7 +115,7 @@ final class JishoCrawlerService
                 array_splice($results, $key, 0, $crawler->text());
             });
 
-        return join($results);
+        return trim(join($results));
     }
 
     /**
@@ -178,59 +141,105 @@ final class JishoCrawlerService
     }
 
     /**
-     * @return array<DefinitionDto>
+     * @param array<SenseDTO>    $senses
+     * @param array<CategoryDTO> $categories
      */
-    private function getDefinition(\DOMNodeList $nodeList, array $categories): ?DefinitionDto
+    private function getDefinition(string $definition, array $senses, array $categories): DefinitionDto
     {
-        $definitionElement = $this->crawlerFactory::fromNodeList($nodeList)->filter('.meaning-meaning')->first();
-
-        if ($definitionElement->count() === 0) {
-            return null;
-        }
-
         return new DefinitionDto(
-            trim($definitionElement->text()),
-            $this->getSenses($definitionElement->siblings()->last()),
+            trim($definition),
+            $senses,
             $categories
         );
+    }
+
+    private function setExampleSentence(?DOMNode $node): void
+    {
+        if (is_null($node)) {
+            $this->exampleSentence = '';
+            $this->exampleSentenceTranslation = '';
+
+            return;
+        }
+
+        $this->crawlerFactory::fromNode($node)->each(function (Crawler $crawler) {
+            $this->exampleSentenceTranslation = $crawler->children()->last()->text();
+
+            $crawler
+                ->filter('.sentence ul li .unlinked')
+                ->each(fn(Crawler $crawler) => $this->exampleSentence .= $crawler->text());
+
+            $this->exampleSentence .= ($this->exampleSentence == '') ? '' : '。';
+        });
     }
 
     /**
      * @return array<SenseDTO>
      */
-    private function getSenses(Crawler $element): array
+    private function getSenses(?DOMNode $node): array
     {
-        $children = $element->children();
-        $senseTags = $children?->filter('.sense-tag');
-
-        if (
-            $children->count() > 0 &&
-            $senseTags->count() > 0 &&
-            !in_array(
-                $senseTags->first()->attr('class'),
-                ['sense-tag tag-antonym', 'sense-tag tag-see_also']
-            )
-        ) {
-            $senses = $senseTags
-                ->filter('span:not(.tag-see_also)')
-                ->filter('span:not(.tag-antonym)')
-                ->each(
-                    fn(Crawler $crawler) => new SenseDTO(trim($crawler->text()))
-                );
+        if (is_null($node)) {
+            return [];
         }
 
-        return $senses ?? [];
+        return $this->crawlerFactory::fromNode($node)
+                    ->children()
+                    ->filter('span.sense-tag')
+                    ->filter('span:not(.tag-see_also)')
+                    ->filter('span:not(.tag-antonym)')
+                    ->each(fn(Crawler $node) => new SenseDTO(trim($node->text())));
     }
 
     /**
      * @return array<OtherFormDto>
      */
-    private function getOtherForms(\DOMNodeList $nodeList): array
+    private function getOtherForms(string $otherForms): array
     {
-        return $this->crawlerFactory::fromNodeList($nodeList)
-                ->filter('.meaning-meaning')
-                ->each(
-                    fn(Crawler $crawler) => new OtherFormDto(trim($crawler->text()))
-                );
+        return array_map(
+            fn($form) => new OtherFormDto(trim($form)),
+            explode('、', $otherForms)
+        );
+    }
+
+    /**
+     * @param array<string> $meanings
+     * @param array<string> $tags
+     * @param array<array<SenseDTO>> $senses
+     */
+    private function makeWord(
+        array $meanings,
+        array $tags,
+        array $senses,
+        string $word,
+        string $kana,
+    ): WordDto
+    {
+        $definitions = [];
+        $otherForms = [];
+
+        foreach ($meanings as $i => $meaning) {
+            if ($tags[$i] == 'Other forms') {
+                $otherForms = $this->getOtherForms($meaning);
+
+                continue;
+            }
+
+            $currentCategories = $this->getCategories($tags[$i]);
+
+            if (in_array($currentCategories[0]->name, $this->excludeCategories)) {
+                continue;
+            }
+
+            $definitions[] = $this->getDefinition($meaning, $senses[$i], $currentCategories);
+        }
+
+        return new WordDto(
+            $word,
+            $kana,
+            $definitions,
+            $otherForms,
+            $this->exampleSentence,
+            $this->exampleSentenceTranslation,
+        );
     }
 }

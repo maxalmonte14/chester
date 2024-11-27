@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\DTO\ExtractLinkPayloadDto;
+use App\Exceptions\UnableToFetchLinksException;
 use App\Services\JishoCrawlerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,7 +28,7 @@ final class ExtractController extends AbstractController
                 'count' => count($links),
                 'extra' => json_encode($links),
             ]);
-        } catch (\Exception $exception) {
+        } catch (UnableToFetchLinksException $exception) {
             return $this->render('errors/500.html.twig', [
                 'message' => $exception->getMessage(),
             ]);
