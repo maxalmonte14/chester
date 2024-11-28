@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\DTO;
+namespace Chester\DTO;
 
 final class ExtractLinkPayloadDto
 {

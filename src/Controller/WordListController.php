@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Controller;
+namespace Chester\Controller;
 
-use App\DTO\WordListPayloadDto;
-use App\Exceptions\UnableToRetrieveWordListException;
-use App\Services\JishoCrawlerService;
+use Chester\DTO\WordListPayloadDto;
+use Chester\Exceptions\UnableToRetrieveWordListException;
+use Chester\Services\JishoCrawlerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;

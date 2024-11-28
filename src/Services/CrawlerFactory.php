@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace Chester\Services;
 
 use DOMNode;
 use Symfony\Component\DomCrawler\Crawler;

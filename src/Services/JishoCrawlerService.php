@@ -2,16 +2,17 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace Chester\Services;
 
-use App\DTO\CategoryDTO;
-use App\DTO\DefinitionDto;
-use App\DTO\LinkDto;
-use App\DTO\OtherFormDto;
-use App\DTO\SenseDTO;
-use App\DTO\WordDto;
-use App\Exceptions\UnableToFetchLinksException;
-use App\Exceptions\UnableToRetrieveWordListException;
+use Chester\DTO\CategoryDTO;
+use Chester\DTO\DefinitionDto;
+use Chester\DTO\ExampleSentenceDTO;
+use Chester\DTO\LinkDto;
+use Chester\DTO\OtherFormDto;
+use Chester\DTO\SenseDTO;
+use Chester\DTO\WordDto;
+use Chester\Exceptions\UnableToFetchLinksException;
+use Chester\Exceptions\UnableToRetrieveWordListException;
 use DOMNode;
 use Exception;
 use Symfony\Component\DomCrawler\Crawler;
@@ -33,8 +34,6 @@ final class JishoCrawlerService
     public function __construct(
         private readonly HttpClientInterface $client,
         private readonly CrawlerFactory $crawlerFactory,
-        private string $exampleSentence = '',
-        private string $exampleSentenceTranslation = '',
     ) {}
 
     /**
@@ -82,10 +81,9 @@ final class JishoCrawlerService
                 $tags = $crawler
                     ->filter('.meanings-wrapper div.meaning-tags')
                     ->each(fn (Crawler $crawler) => $crawler->text());
+                $exampleSentence = $this->getExampleSentence($crawler->filter('.sentence')->getNode(0));
 
-                $this->setExampleSentence($crawler->filter('.sentence')->getNode(0));
-
-                $words[] = $this->makeWord($meanings, $tags, $senses, trim($link->text), $kana);
+                $words[] = $this->makeWord($meanings, $tags, $senses, trim($link->text), $kana, $exampleSentence);
             }
 
             return $words;
@@ -153,24 +151,25 @@ final class JishoCrawlerService
         );
     }
 
-    private function setExampleSentence(?DOMNode $node): void
+    private function getExampleSentence(?DOMNode $node): ?ExampleSentenceDTO
     {
         if (is_null($node)) {
-            $this->exampleSentence = '';
-            $this->exampleSentenceTranslation = '';
-
-            return;
+            return null;
         }
 
-        $this->crawlerFactory::fromNode($node)->each(function (Crawler $crawler) {
-            $this->exampleSentenceTranslation = $crawler->children()->last()->text();
+        $translation = '';
+        $sentence = '';
 
-            $crawler
-                ->filter('.sentence ul li .unlinked')
-                ->each(fn(Crawler $crawler) => $this->exampleSentence .= $crawler->text());
-
-            $this->exampleSentence .= ($this->exampleSentence == '') ? '' : '。';
+        $this->crawlerFactory::fromNode($node)
+            ->each(function (Crawler $crawler) use (&$translation, &$sentence) {
+            $translation = trim($crawler->children()->last()->text());
+            $sentencePieces = $crawler
+                                ->filter('.sentence ul li .unlinked')
+                                ->each(fn(Crawler $crawler) => $crawler->text());
+            $sentence = (join($sentencePieces) == '') ? '' : join($sentencePieces).'。';
         });
+
+        return new ExampleSentenceDTO(trim($sentence), trim($translation));
     }
 
     /**
@@ -212,6 +211,7 @@ final class JishoCrawlerService
         array $senses,
         string $word,
         string $kana,
+        ?ExampleSentenceDTO $exampleSentence
     ): WordDto
     {
         $definitions = [];
@@ -233,13 +233,6 @@ final class JishoCrawlerService
             $definitions[] = $this->getDefinition($meaning, $senses[$i], $currentCategories);
         }
 
-        return new WordDto(
-            $word,
-            $kana,
-            $definitions,
-            $otherForms,
-            $this->exampleSentence,
-            $this->exampleSentenceTranslation,
-        );
+        return new WordDto($word, $kana, $definitions, $otherForms, $exampleSentence);
     }
 }

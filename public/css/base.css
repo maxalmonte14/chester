@@ -109,6 +109,10 @@ li span[class^='godan-verb-with'] {
   background-color: indianred;
 }
 
+.particle-tag {
+  background-color: indigo;
+}
+
 .definition-sense {
   color: gray;
   font-size: 12px;

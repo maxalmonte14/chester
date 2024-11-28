@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\DTO;
+namespace Chester\DTO;
 
 /**
  * @property  $definitions array<DefinitionDto>
@@ -13,9 +13,8 @@ final class WordDto
     public function __construct(
         public string $word,
         public string $kana,
-        public array  $definitions,
-        public array  $otherForms,
-        public string $exampleSentence,
-        public string $exampleSentenceTranslation,
+        public array $definitions,
+        public array $otherForms,
+        public ?ExampleSentenceDTO $exampleSentence,
     ) {}
 }
