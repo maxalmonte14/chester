@@ -22,9 +22,7 @@
                     </li>
                 {%- endfor -%}
             </ul>",
-            {%- if word.exampleSentence != null -%}
-                "{{- word.exampleSentence.sentence -}}",,"{{- word.exampleSentence.translation -}}"
-            {%- endif -%}
+            "{{- word.exampleSentence.sentence|default('') -}}",,"{{- word.exampleSentence.translation|default('') -}}"
         </li>
     {%- endfor -%}
 </ul>
