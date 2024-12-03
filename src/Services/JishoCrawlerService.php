@@ -44,7 +44,7 @@ final class JishoCrawlerService
     {
         try {
             $response = $this->client->request('GET', $link);
-            $crawler = $this->crawlerFactory::fromString($response->getContent());
+            $crawler  = $this->crawlerFactory::fromString($response->getContent());
 
             return $crawler->filter('.concept_light.clearfix')->each(function (Crawler $node) {
                 $word = $node->filter('span.text')->first()->text();
@@ -68,26 +68,34 @@ final class JishoCrawlerService
 
             foreach ($links as $link) {
                 $senses   = [];
+                $tags     = [];
                 $response = $this->client->request('GET', sprintf('https:%s', $link->url));
                 $crawler  = $this->crawlerFactory::fromString($response->getContent());
                 $kana     = $this->getKana($crawler->getNode(0));
                 $meanings = $crawler
-                    ->filter('.meanings-wrapper div.meaning-wrapper span.meaning-meaning')
-                    ->each(function (Crawler $crawler) use (&$senses) {
-                        $senses[] = $this->getSenses($crawler->siblings()->last()->getNode(0));
+                                ->filter('.meanings-wrapper div.meaning-wrapper')
+                                ->each(function (Crawler $crawler) use (&$senses, &$tags) {
+                                    $previousSibling = $crawler->previousAll();
 
-                        return trim($crawler->text());
-                    });
-                $tags = $crawler
-                    ->filter('.meanings-wrapper div.meaning-tags')
-                    ->each(fn (Crawler $crawler) => $crawler->text());
+                                    if ($previousSibling->text() == 'Notes') {
+                                        return;
+                                    }
+
+                                    $meaningNode = $crawler->filter('span.meaning-meaning')->first();
+                                    $sensesNode  = $meaningNode->siblings()->last()->getNode(0);
+                                    $senses[]    = $this->getSenses($sensesNode);
+                                    $tags[]      = $previousSibling->attr('class') == 'meaning-tags'
+                                                    ? $previousSibling->text()
+                                                    : '';
+
+                                    return trim($meaningNode->text());
+                                });
                 $exampleSentence = $this->getExampleSentence($crawler->filter('.sentence')->getNode(0));
-
-                $words[] = $this->makeWord($meanings, $tags, $senses, trim($link->text), $kana, $exampleSentence);
+                $words[] = $this->makeWord(array_filter($meanings), $tags, $senses, trim($link->text), $kana, $exampleSentence);
             }
 
             return $words;
-        } catch (Exception) {
+        } catch (Exception $exception) {
             throw new UnableToRetrieveWordListException();
         }
     }
@@ -224,13 +232,16 @@ final class JishoCrawlerService
                 continue;
             }
 
-            $currentCategories = $this->getCategories($tags[$i]);
+            $categories = $this->getCategories($tags[$i]);
 
-            if (in_array($currentCategories[0]->name, $this->excludeCategories)) {
+            if (
+                isset($categories[0]) &&
+                in_array($categories[0]->name, $this->excludeCategories)
+            ) {
                 continue;
             }
 
-            $definitions[] = $this->getDefinition($meaning, $senses[$i], $currentCategories);
+            $definitions[] = $this->getDefinition($meaning, $senses[$i], $categories);
         }
 
         return new WordDto($word, $kana, $definitions, $otherForms, $exampleSentence);
