@@ -113,8 +113,68 @@ li span[class^='godan-verb-with'] {
   background-color: indigo;
 }
 
+.noun-or-verb-acting-prenominally-tag {
+  background-color: lawngreen;
+  color: black;
+}
+
+li span:is([class^='irregular-'], [class$='-verb-tag']) {
+  background-color: lavender;
+  color: black;
+}
+
+.noun-used-as-a-prefix-tag {
+  background-color: lightblue;
+  color: black;
+}
+
 .definition-sense {
   color: gray;
   font-size: 12px;
   font-weight: lighter;
+}
+
+.container {
+  align-content: center;
+  align-items: center;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+}
+
+.search-button {
+  background-color:#54a0ff;
+  border: 1px solid #54a0ff;
+  border-radius: 25px;
+  color:white;
+  height: 50px;
+  width: 100px;
+}
+
+.search-button:hover {
+  background-color:#2e86de;
+  border: 1px solid #2e86de;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.search-button:disabled {
+  background-color:#8395a7;
+  border: 1px solid #8395a7;
+  cursor: not-allowed;
+}
+
+.search-input {
+  border:1px solid gray;
+  border-radius: 25px;
+  height: 50px;
+  width: 600px;
+  font-size: 24px;
+}
+
+.homepage-title {
+  font-family: sans-serif;
+  font-size: 60px
 }

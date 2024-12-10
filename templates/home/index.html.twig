@@ -1,14 +1,27 @@
 {% extends 'base.html.twig' %}
 
+{% block title %}Chester | Let's start crawling in the web's skin{% endblock %}
+
 {% block body %}
-    <h1>Fetch words from:</h1>
-    <form>
-        <label for="pageLink">Link</label>
-        <input type="text" name="pageLink">
-        <button type="button" hx-post="/extract"
-                hx-trigger="click"
-                hx-target="#results"
-                hx-swap="innerHTML">Search</button>
-    </form>
-    <div id="results"></div>
+    <div class="container">
+        <h1 class="homepage-title">Chester</h1>
+        <form>
+            <input type="text" name="pageLink" class="search-input">
+            <button
+                    class="search-button"
+                    hx-disabled-elt="this"
+                    hx-indicator="#loading"
+                    hx-post="/extract"
+                    hx-swap="innerHTML"
+                    hx-target="#results"
+                    hx-trigger="click"
+                    type="button"
+            >
+                Crawl
+            </button>
+        </form>
+        <div id="results">
+            <span class="htmx-indicator" id="loading">Loading...</span>
+        </div>
+    </div>
 {% endblock %}
