@@ -88,7 +88,7 @@ final class JishoCrawlerService
                                                     ? $previousSibling->text()
                                                     : '';
 
-                                    return trim($meaningNode->text());
+                                    return $meaningNode->text();
                                 });
                 $exampleSentence = $this->getExampleSentence($crawler->filter('.sentence')->getNode(0));
                 $words[] = $this->makeWord(array_filter($meanings), $tags, $senses, trim($link->text), $kana, $exampleSentence);
@@ -103,7 +103,13 @@ final class JishoCrawlerService
     private function getKana(DOMNode $node): string
     {
         $furigana = $this->crawlerFactory::fromNode($node)->filter('.furigana');
-        $results = $furigana
+        $rubyAnnotation = $furigana->filter('ruby rt');
+        
+        if ($rubyAnnotation->count() > 0) {
+            return $rubyAnnotation->text();
+        }
+
+        $results  = $furigana
                         ->siblings()
                         ->first()
                         ->children()
@@ -114,7 +120,7 @@ final class JishoCrawlerService
             ->children()
             ->filter('span')
             ->each(function (Crawler $crawler, $key) use (&$results) {
-                if (trim($crawler->text()) == '') {
+                if ($crawler->text() == '') {
                     return;
                 }
 
@@ -152,11 +158,7 @@ final class JishoCrawlerService
      */
     private function getDefinition(string $definition, array $senses, array $categories): DefinitionDto
     {
-        return new DefinitionDto(
-            trim($definition),
-            $senses,
-            $categories
-        );
+        return new DefinitionDto($definition, $senses, $categories);
     }
 
     private function getExampleSentence(?DOMNode $node): ?ExampleSentenceDTO
@@ -170,14 +172,14 @@ final class JishoCrawlerService
 
         $this->crawlerFactory::fromNode($node)
             ->each(function (Crawler $crawler) use (&$translation, &$sentence) {
-            $translation = trim($crawler->children()->last()->text());
-            $sentencePieces = $crawler
-                                ->filter('.sentence ul li .unlinked')
-                                ->each(fn(Crawler $crawler) => $crawler->text());
-            $sentence = (join($sentencePieces) == '') ? '' : join($sentencePieces).'。';
+                $translation = $crawler->children()->last()->text();
+                $sentencePieces = $crawler
+                                    ->filter('.sentence ul li .unlinked')
+                                    ->each(fn(Crawler $crawler) => $crawler->text());
+                $sentence = (join($sentencePieces) == '') ? '' : join($sentencePieces).'。';
         });
 
-        return new ExampleSentenceDTO(trim($sentence), trim($translation));
+        return new ExampleSentenceDTO(trim($sentence), $translation);
     }
 
     /**
@@ -194,7 +196,7 @@ final class JishoCrawlerService
                     ->filter('span.sense-tag')
                     ->filter('span:not(.tag-see_also)')
                     ->filter('span:not(.tag-antonym)')
-                    ->each(fn(Crawler $node) => new SenseDTO(trim($node->text())));
+                    ->each(fn(Crawler $node) => new SenseDTO($node->text()));
     }
 
     /**
