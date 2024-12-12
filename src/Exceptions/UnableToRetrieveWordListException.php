@@ -8,6 +8,9 @@ use Exception;
 
 final class UnableToRetrieveWordListException extends Exception
 {
+    /**
+     * @var string
+     */
     protected $message = 'Unable to retrieve word list';
 
     public function __construct()

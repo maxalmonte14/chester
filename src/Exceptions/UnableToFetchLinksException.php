@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace Chester\Exceptions;
 
-final class UnableToFetchLinksException extends \Exception
+use Exception;
+
+final class UnableToFetchLinksException extends Exception
 {
+    /**
+     * @var string
+     */
     protected $message = 'Unable to retrieve links';
 
     public function __construct()

@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace Chester\DTO;
 
 /**
- * @property  $definitions array<DefinitionDto>
- * @property  $otherForms  array<OtherFormDto>
+ * @property array<DefinitionDto> $definitions
+ * @property array<OtherFormDto>  $otherForms
  */
 final class WordDto
 {
+    /**
+     * @param array<DefinitionDto> $definitions
+     * @param array<OtherFormDto>  $otherForms
+     */
     public function __construct(
         public string $word,
-        public string $kana,
+        public ?string $kana,
         public array $definitions,
         public array $otherForms,
         public ?ExampleSentenceDTO $exampleSentence,

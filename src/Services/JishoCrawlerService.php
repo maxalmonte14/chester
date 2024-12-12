@@ -20,11 +20,17 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class JishoCrawlerService
 {
+    /**
+     * @var array<string>
+     */
     private array $excludeCategories = [
         'Place',
         'Wikipedia definition',
     ];
 
+    /**
+     * @var array<string>
+     */
     private array $knownCategoriesIncludingComma = [
         'Expressions (phrases, clauses, etc.)',
         'Noun, used as a prefix',
@@ -33,7 +39,7 @@ final class JishoCrawlerService
 
     public function __construct(
         private readonly HttpClientInterface $client,
-        private readonly CrawlerFactory $crawlerFactory,
+        private readonly CrawlerFactory      $crawlerFactory,
     ) {}
 
     /**
@@ -44,22 +50,28 @@ final class JishoCrawlerService
     {
         try {
             $response = $this->client->request('GET', $link);
-            $crawler  = $this->crawlerFactory::fromString($response->getContent());
 
-            return $crawler->filter('.concept_light.clearfix')->each(function (Crawler $node) {
-                $word = $node->filter('span.text')->first()->text();
-                $link = $node->filter('a.light-details_link')->first()->attr('href');
+            return $this->crawlerFactory::fromString($response->getContent())
+                    ->filter('.concept_light.clearfix')
+                    ->each(function (Crawler $node) {
+                        $word = $node->filter('span.text')->first()->text();
+                        $link = $node->filter('a.light-details_link')->first()->attr('href');
 
-                return new LinkDto($link, $word);
-            });
+                        if (!is_null($link)) {
+                            return new LinkDto($link, $word);
+                        }
+
+                    });
         } catch (Exception) {
             throw new UnableToFetchLinksException();
         }
     }
 
     /**
-     * @param array<LinkDto> $links
+     * @param  array<LinkDto> $links
      * @throws UnableToRetrieveWordListException
+     * 
+     * @return array<WordDto>
      */
     public function getWords(array $links): array
     {
@@ -95,13 +107,17 @@ final class JishoCrawlerService
             }
 
             return $words;
-        } catch (Exception $exception) {
+        } catch (Exception) {
             throw new UnableToRetrieveWordListException();
         }
     }
 
-    private function getKana(DOMNode $node): string
+    private function getKana(?DOMNode $node): ?string
     {
+        if (is_null($node)) {
+            return null;
+        }
+
         $furigana = $this->crawlerFactory::fromNode($node)->filter('.furigana');
         $rubyAnnotation = $furigana->filter('ruby rt');
         
@@ -211,8 +227,8 @@ final class JishoCrawlerService
     }
 
     /**
-     * @param array<string> $meanings
-     * @param array<string> $tags
+     * @param array<string>          $meanings
+     * @param array<string>          $tags
      * @param array<array<SenseDTO>> $senses
      */
     private function makeWord(
@@ -220,7 +236,7 @@ final class JishoCrawlerService
         array $tags,
         array $senses,
         string $word,
-        string $kana,
+        ?string $kana,
         ?ExampleSentenceDTO $exampleSentence
     ): WordDto
     {
