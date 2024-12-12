@@ -50,18 +50,19 @@ final class JishoCrawlerService
     {
         try {
             $response = $this->client->request('GET', $link);
+            /** @var array<LinkDto> */
+            $links = $this->crawlerFactory::fromString($response->getContent())
+                        ->filter('.concept_light.clearfix')
+                        ->each(function (Crawler $node) {
+                            $word = $node->filter('span.text')->first()->text();
+                            $link = $node->filter('a.light-details_link')->first()->attr('href');
 
-            return $this->crawlerFactory::fromString($response->getContent())
-                    ->filter('.concept_light.clearfix')
-                    ->each(function (Crawler $node) {
-                        $word = $node->filter('span.text')->first()->text();
-                        $link = $node->filter('a.light-details_link')->first()->attr('href');
+                            if (!is_null($link)) {
+                                return new LinkDto($link, $word);
+                            }
+                        });
 
-                        if (!is_null($link)) {
-                            return new LinkDto($link, $word);
-                        }
-
-                    });
+            return $links;
         } catch (Exception) {
             throw new UnableToFetchLinksException();
         }
@@ -84,6 +85,7 @@ final class JishoCrawlerService
                 $response = $this->client->request('GET', sprintf('https:%s', $link->url));
                 $crawler  = $this->crawlerFactory::fromString($response->getContent());
                 $kana     = $this->getKana($crawler->getNode(0));
+                /** @var array<string> */
                 $meanings = $crawler
                                 ->filter('.meanings-wrapper div.meaning-wrapper')
                                 ->each(function (Crawler $crawler) use (&$senses, &$tags) {
@@ -135,7 +137,7 @@ final class JishoCrawlerService
         $furigana
             ->children()
             ->filter('span')
-            ->each(function (Crawler $crawler, $key) use (&$results) {
+            ->each(function (Crawler $crawler, int $key) use (&$results) {
                 if ($crawler->text() == '') {
                     return;
                 }
@@ -168,15 +170,6 @@ final class JishoCrawlerService
         );
     }
 
-    /**
-     * @param array<SenseDTO>    $senses
-     * @param array<CategoryDTO> $categories
-     */
-    private function getDefinition(string $definition, array $senses, array $categories): DefinitionDto
-    {
-        return new DefinitionDto($definition, $senses, $categories);
-    }
-
     private function getExampleSentence(?DOMNode $node): ?ExampleSentenceDTO
     {
         if (is_null($node)) {
@@ -207,12 +200,15 @@ final class JishoCrawlerService
             return [];
         }
 
-        return $this->crawlerFactory::fromNode($node)
+        /** @var array<SenseDTO> */
+        $results = $this->crawlerFactory::fromNode($node)
                     ->children()
                     ->filter('span.sense-tag')
                     ->filter('span:not(.tag-see_also)')
                     ->filter('span:not(.tag-antonym)')
                     ->each(fn(Crawler $node) => new SenseDTO($node->text()));
+
+        return $results;
     }
 
     /**
@@ -259,7 +255,7 @@ final class JishoCrawlerService
                 continue;
             }
 
-            $definitions[] = $this->getDefinition($meaning, $senses[$i], $categories);
+            $definitions[] = new DefinitionDto($meaning, $senses[$i], $categories);
         }
 
         return new WordDto($word, $kana, $definitions, $otherForms, $exampleSentence);
