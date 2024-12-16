@@ -6,7 +6,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class WordListControllerTest extends WebTestCase
 {
-    public function testItCanShowWordListFromValidLinkCollection(): void
+    public function testItShowsWordListFromLinkCollection(): void
     {
         $client = static::createClient();
         
@@ -40,5 +40,23 @@ class WordListControllerTest extends WebTestCase
         ])]);
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('p', 'Unable to retrieve word list');
+    }
+
+    public function testItShowsWordListWhenLinkHasNoCategory(): void
+    {
+        $client = static::createClient();
+        
+        $crawler = $client->request('POST', '/word-list', ['data' => json_encode([
+            [
+                'text' => '学校',
+                'url'  => '//jisho.org/word/%E5%AD%A6%E6%A0%A1',
+            ],
+            [
+                'text' => 'はい',
+                'url'  => '//jisho.org/word/%E3%81%AF%E3%81%84',
+            ]
+        ])]);
+        $this->assertResponseIsSuccessful();
+        $this->assertCount(2, $crawler->filter('ul.word-list > li'));
     }
 }

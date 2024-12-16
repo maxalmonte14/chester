@@ -89,16 +89,18 @@ final class JishoCrawlerService
                 $meanings = $crawler
                                 ->filter('.meanings-wrapper div.meaning-wrapper')
                                 ->each(function (Crawler $crawler) use (&$senses, &$tags) {
-                                    $previousSibling = $crawler->previousAll();
+                                    $previousSibling = $crawler->previousAll()->count() > 0
+                                                        ? $crawler->previousAll()
+                                                        : null;
 
-                                    if ($previousSibling->text() == 'Notes') {
+                                    if (!is_null($previousSibling) && $previousSibling->text('') == 'Notes') {
                                         return;
                                     }
 
                                     $meaningNode = $crawler->filter('span.meaning-meaning')->first();
                                     $sensesNode  = $meaningNode->siblings()->last()->getNode(0);
                                     $senses[]    = $this->getSenses($sensesNode);
-                                    $tags[]      = $previousSibling->attr('class') == 'meaning-tags'
+                                    $tags[]      = (!is_null($previousSibling) && $previousSibling->attr('class') == 'meaning-tags')
                                                     ? $previousSibling->text()
                                                     : '';
 
@@ -109,7 +111,7 @@ final class JishoCrawlerService
             }
 
             return $words;
-        } catch (Exception) {
+        } catch (Exception $exception) {
             throw new UnableToRetrieveWordListException();
         }
     }
