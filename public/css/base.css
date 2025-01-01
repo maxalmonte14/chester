@@ -134,6 +134,20 @@ li span:is([class^='irregular-'], [class$='-verb-tag']) {
   font-weight: lighter;
 }
 
+.suru-verb-included-tag {
+  background-color: lime;
+  color: black;
+}
+
+.kuru-verb-special-class-tag {
+  background-color: magenta;
+  color: black;
+}
+
+.adverb-taking-the-to-particle-tag {
+  background-color: maroon;
+}
+
 .container {
   align-content: center;
   align-items: center;
