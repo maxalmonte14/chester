@@ -84,7 +84,7 @@ final class JishoCrawlerService
                 $tags     = [];
                 $response = $this->client->request('GET', sprintf('https:%s', $link->url));
                 $crawler  = $this->crawlerFactory::fromString($response->getContent());
-                $kana     = $this->getKana($crawler->getNode(0));
+                $kana     = $this->getKana($crawler->getNode(0), trim($link->text));
                 /** @var array<string> */
                 $meanings = $crawler
                                 ->filter('.meanings-wrapper div.meaning-wrapper')
@@ -111,12 +111,12 @@ final class JishoCrawlerService
             }
 
             return $words;
-        } catch (Exception $exception) {
+        } catch (Exception) {
             throw new UnableToRetrieveWordListException();
         }
     }
 
-    private function getKana(?DOMNode $node): ?string
+    private function getKana(?DOMNode $node, string $word): ?string
     {
         if (is_null($node)) {
             return null;
@@ -146,8 +146,10 @@ final class JishoCrawlerService
 
                 array_splice($results, $key, 0, $crawler->text());
             });
+        
+        $kana = trim(join($results));
 
-        return trim(join($results));
+        return ($kana != $word) ? $kana : null;
     }
 
     /**
