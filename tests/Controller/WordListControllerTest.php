@@ -59,4 +59,18 @@ class WordListControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $this->assertCount(2, $crawler->filter('ul.word-list > li'));
     }
+
+    public function testItShowsWordListWithProperTagsWhenTagHasHyphen(): void
+    {
+        $client = static::createClient();
+        
+        $crawler = $client->request('POST', '/word-list', ['data' => json_encode([
+            [
+                'text' => '温い',
+                'url'  => '//jisho.org/word/%E6%B8%A9%E3%81%84',
+            ],
+        ])]);
+        $this->assertResponseIsSuccessful();
+        $this->assertCount(2, $crawler->filter('ul > li > span.i-adjective-keiyoushi-tag'));
+    }
 }
